@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Meet Receipt: a meeting-cost ledger for founders. Idea, architecture, pitch deck, market check, and rating.">
+<title>Meet Receipt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: a ledger. One narrow reading column, receipt blocks set in mono, a horizontal deck strip mid-page. */
+:root{
+  --paper:#F6F7F4; --paper-2:#ECEEE8; --ink:#141A22; --ink-2:#4A5563; --rule:#C9CEC4;
+  --stamp:#C8381F; --ledger:#1F6F4A; --warn:#B4740E;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#12161B; --paper-2:#1B2129; --ink:#ECEEE8; --ink-2:#A8B0BA; --rule:#2E3741;
+  --stamp:#F0633F; --ledger:#4CBF86; --warn:#E0A33A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#12161B; --paper-2:#1B2129; --ink:#ECEEE8; --ink-2:#A8B0BA; --rule:#2E3741;
+  --stamp:#F0633F; --ledger:#4CBF86; --warn:#E0A33A; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55;margin:0;padding-block:0 64px;padding-inline:16px}
+a{color:var(--ink)}
+h1,h2,h3{font-family:var(--sans);font-stretch:112%;font-weight:700;letter-spacing:-0.01em;text-wrap:balance;margin:0}
+h1{font-size:clamp(40px,7vw,72px);line-height:1}
+h2{font-size:clamp(26px,3.6vw,36px);line-height:1.1}
+h3{font-size:20px}
+p{margin:0}
+.wrap{max-width:1040px;margin:0 auto}
+.col{max-width:680px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+section{padding-block:56px;border-top:1px solid var(--rule)}
+section:first-of-type{border-top:0}
+.stack{display:flex;flex-direction:column;gap:18px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+.muted{color:var(--ink-2)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+ul{margin:0;padding-left:20px}
+li{margin-block:4px}
+
+/* Header */
+header{padding-block:40px 24px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:baseline}
+nav{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:13px}
+nav a{text-decoration:none;color:var(--ink-2)}
+nav a:hover,nav a:focus-visible{color:var(--ink);outline:none;text-decoration:underline}
+
+/* Receipt block */
+.receipt{font-family:var(--mono);font-size:14px;background:var(--paper-2);border:1px solid var(--rule);padding:22px 20px;max-width:420px;width:100%;position:relative;line-height:1.5}
+.receipt .r-head{text-align:center;border-bottom:1px dashed var(--rule);padding-bottom:10px;margin-bottom:10px}
+.receipt .r-row{display:flex;justify-content:space-between;gap:12px}
+.receipt .r-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.receipt .r-total{border-top:1px dashed var(--rule);margin-top:10px;padding-top:10px;font-weight:600;font-size:18px}
+.receipt .r-sub{color:var(--ink-2);font-size:12px}
+.receipt .r-sec{border-top:1px dashed var(--rule);margin-top:10px;padding-top:10px}
+.stamp{position:absolute;right:14px;top:14px;transform:rotate(-8deg);border:2px solid var(--stamp);color:var(--stamp);font-weight:600;font-size:11px;letter-spacing:.14em;padding:3px 7px;text-transform:uppercase}
+.poll{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.poll span{border:1px solid var(--rule);padding:3px 8px;font-size:12px}
+.poll span.on{border-color:var(--ledger);color:var(--ledger)}
+
+/* Tables */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.yes{color:var(--ledger);font-weight:600}.no{color:var(--ink-2)}.part{color:var(--warn);font-weight:600}
+
+/* Architecture diagram */
+.diagram{overflow-x:auto;border:1px solid var(--rule);background:var(--paper-2);padding:12px}
+.diagram svg{min-width:860px;width:100%;height:auto;display:block}
+.diagram text{font-family:var(--sans);font-size:13px;fill:var(--ink)}
+.diagram .small{font-size:11px;fill:var(--ink-2)}
+.diagram .box{fill:var(--paper);stroke:var(--rule);stroke-width:1.2}
+.diagram .box.ext{stroke:var(--ink-2);stroke-dasharray:4 3}
+.diagram .box.hot{stroke:var(--stamp);stroke-width:1.6}
+.diagram .arrow{stroke:var(--ink-2);stroke-width:1.4;fill:none;marker-end:url(#ah)}
+.diagram .lbl{font-family:var(--mono);font-size:11px;fill:var(--ink-2)}
+
+/* Formula */
+.formula{font-family:var(--mono);font-size:15px;background:var(--paper-2);border-left:3px solid var(--ledger);padding:14px 16px;overflow-x:auto;white-space:nowrap}
+
+/* Deck */
+.deck{position:relative}
+.strip{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:thin}
+.slide{flex:0 0 min(92vw,860px);aspect-ratio:16/9;max-width:100%;scroll-snap-align:start;background:var(--paper-2);border:1px solid var(--rule);padding:clamp(18px,3.4vw,40px);display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.slide .s-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.slide h3{font-size:clamp(20px,3.2vw,34px);font-stretch:112%;line-height:1.1;margin-bottom:10px}
+.slide .s-body{font-size:clamp(14px,1.8vw,18px);display:flex;flex-direction:column;gap:8px;min-width:0}
+.slide .s-body ul{padding-left:18px}
+.slide.title{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.slide.title .s-top,.slide.title .muted{color:var(--paper-2)}
+.slide.title h3{font-size:clamp(34px,6vw,64px)}
+.slide .big{font-family:var(--mono);font-size:clamp(28px,5vw,56px);font-weight:600;line-height:1;color:var(--stamp)}
+.slide.title .big{color:var(--paper)}
+.deck-nav{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.deck-nav button{font-family:var(--mono);font-size:13px;background:var(--paper);color:var(--ink);border:1px solid var(--rule);padding:6px 12px;cursor:pointer}
+.deck-nav button:hover,.deck-nav button:focus-visible{border-color:var(--ink);outline:none}
+.slide-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}
+@media (max-width:600px){.slide-grid{grid-template-columns:1fr}.slide{aspect-ratio:auto;min-height:60vw}}
+
+/* Rating */
+.score{display:grid;grid-template-columns:minmax(150px,1.2fr) 3fr auto;gap:10px 14px;align-items:center;font-size:15px}
+.score .bar{height:10px;background:var(--paper-2);border:1px solid var(--rule);position:relative}
+.score .bar i{position:absolute;inset:0;right:auto;background:var(--ledger)}
+.score .bar.low i{background:var(--stamp)}.score .bar.mid i{background:var(--warn)}
+.score .n{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:4ch;text-align:right}
+.verdict{border:1px solid var(--rule);padding:22px 24px;background:var(--paper-2);display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+.verdict .big{font-family:var(--mono);font-size:56px;font-weight:600;line-height:1;color:var(--stamp)}
+@media (max-width:520px){.verdict{grid-template-columns:1fr}.score{grid-template-columns:1fr 2fr auto}}
+.callout{border-left:3px solid var(--stamp);padding:10px 16px;background:var(--paper-2)}
+.small{font-size:14px}
+footer{padding-block:32px;font-family:var(--mono);font-size:12px;color:var(--ink-2);border-top:1px solid var(--rule)}
+@media (prefers-reduced-motion:no-preference){.strip{scroll-behavior:smooth}}
+
+/* Mobile pass */
+html{-webkit-text-size-adjust:100%}
+body{padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));overflow-x:hidden}
+body{font-size:clamp(15px,1.1vw + 11px,17px)}
+.wrap,.col,.grid2,.grid3,.stack{min-width:0}
+.grid2>*,.grid3>*{min-width:0}
+td,th{overflow-wrap:anywhere}
+.deck-nav button{min-height:40px;min-width:88px}
+.scroll-hint{display:none;font-family:var(--mono);font-size:11px;color:var(--ink-2);margin-top:6px}
+@media (max-width:700px){
+  header{padding-block:28px 16px}
+  section{padding-block:40px}
+  nav{gap:10px 14px}
+  .receipt{font-size:13px;padding:18px 14px}
+  .receipt .r-total{font-size:16px}
+  .slide{flex-basis:88vw;padding:16px}
+  .slide h3{font-size:clamp(18px,5.6vw,24px)}
+  .slide .s-body{font-size:14px;gap:6px}
+  .slide .big{font-size:clamp(26px,9vw,40px)}
+  .slide.title h3{font-size:clamp(28px,9vw,40px)}
+  .score{grid-template-columns:1fr auto;grid-auto-flow:dense;font-size:14px}
+  .score .bar{grid-column:1 / -1;height:8px}
+  .verdict{padding:18px}
+  .verdict .big{font-size:44px}
+  .scroll-hint{display:block}
+  .formula{font-size:13px}
+  h2{font-size:clamp(24px,7vw,32px)}
+}
+@media (max-width:400px){.slide{flex-basis:86vw}.deck-nav{justify-content:space-between}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">Product overview · October 2026</div>
+    <h1>Meet Receipt</h1>
+  </div>
+  <nav aria-label="Sections">
+    <a href="#idea">Idea</a><a href="#architecture">Architecture</a><a href="#deck">Pitch deck</a><a href="#market">Market</a><a href="#rating">Rating</a><a href="#plan">Build plan</a>
+  </nav>
+</header>
+
+<section id="idea">
+  <div class="grid2">
+    <div class="stack col">
+      <p class="eyebrow">The idea</p>
+      <h2>Every meeting gets a receipt. The founder gets the ledger.</h2>
+      <p>A founder of a 15 to 75 person company no longer sits in most of the company's meetings, yet meetings are the largest unmanaged line item in payroll. Calendars show time. Nothing shows money, and nothing shows what came out.</p>
+      <p>Meet Receipt reads every internal calendar in the Google Workspace, prices each meeting from founder-set hourly rate bands, and sends a visibly named bot into eligible Google Meet calls. After the call it posts a receipt to Slack: the cost, the decisions, the action items with owners, the open questions, speaking share, and a three-tap anonymous poll. On Monday morning the founder gets one message with last week's total, the five most expensive meetings, and the standing series with their annualized run rate.</p>
+      <div class="callout">
+        <p><strong>It never issues a verdict.</strong> A model cannot know whether a decision was good or whether a meeting prevented a worse outcome. The product puts cost next to facts and lets people draw the conclusion. That restraint is also what keeps it from becoming a surveillance tool.</p>
+      </div>
+      <h3>Design principles settled in review</h3>
+      <ul>
+        <li><strong>Rates, not salaries.</strong> Role bands with an optional loaded multiplier. Nobody's pay is stored.</li>
+        <li><strong>Founders see breakdowns, everyone else sees totals.</strong> Attendees never see per-person cost or named speaking share.</li>
+        <li><strong>Visible bot, no 1:1s, no external calls.</strong> Three or more internal people, nobody from outside, not marked private. Anyone can kick it.</li>
+        <li><strong>Anonymous by schema.</strong> Poll votes have no person column. Aggregates appear only at three or more responses.</li>
+        <li><strong>Scheduled and actual.</strong> The gap between what the calendar said and what the bot saw is a metric of its own.</li>
+        <li><strong>Transcripts expire in 30 days, video is never stored.</strong> Derived facts stay.</li>
+      </ul>
+    </div>
+    <div class="receipt" aria-label="Example receipt">
+      <span class="stamp">Observed</span>
+      <div class="r-head">
+        <div style="font-weight:600">MEET RECEIPT</div>
+        <div class="r-sub">Thu 2 Oct 2026 · 14:02–15:03</div>
+        <div style="margin-top:6px">Planning Review (weekly)</div>
+      </div>
+      <div class="r-row"><span>Attendees (internal)</span><span>9</span></div>
+      <div class="r-row"><span>Scheduled</span><span>60 min</span></div>
+      <div class="r-row"><span>Actual (bot observed)</span><span>61 min</span></div>
+      <div class="r-row"><span>Started late</span><span>6 min</span></div>
+      <div class="r-row"><span>Left early</span><span>2 people</span></div>
+      <div class="r-row r-total"><span>Cost</span><span>$1,840</span></div>
+      <div class="r-row r-sub"><span>Scheduled cost</span><span>$1,710</span></div>
+      <div class="r-row r-sub"><span>Series run rate</span><span>$89k / yr</span></div>
+      <div class="r-sec">
+        <div class="r-row"><span>Decisions</span><span>2</span></div>
+        <div class="r-row"><span>Action items (with owner)</span><span>4 (3)</span></div>
+        <div class="r-row"><span>Open questions</span><span>3</span></div>
+        <div class="r-row"><span>Most speech</span><span>61% one person</span></div>
+      </div>
+      <div class="r-sec">
+        <div class="r-row"><span>Worth your time?</span><span>3 / 7 yes</span></div>
+        <div class="poll"><span class="on">Worth it</span><span>Partly</span><span>Not worth it</span></div>
+      </div>
+      <div class="r-sub" style="text-align:center;margin-top:12px">Example figures. Attendee view hides per-person lines.</div>
+    </div>
+  </div>
+</section>
+
+<section id="architecture">
+  <div class="stack">
+    <p class="eyebrow">Architecture</p>
+    <h2>One pipeline, four outside systems, one seam.</h2>
+    <p class="col">Calendar data comes in through a Google service account with domain-wide, read-only delegation, so every employee is covered on day one without connecting anything. Recall.ai runs the bot. Claude extracts the facts. Slack carries every message. Postgres on Vercel holds the ledger. Tests drive the system through the same HTTP routes the outside world hits, against fakes of all four systems.</p>
+    <div class="diagram" role="img" aria-label="Architecture diagram: Google Workspace calendars feed a calendar poller; eligible meetings get a Recall bot that joins Google Meet; webhooks drive processing (attendance, extraction via Claude, speaking share) into Postgres; Slack receives receipts, polls, alerts and the weekly digest; founders use a Next.js dashboard.">
+      <svg viewBox="0 0 980 470" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ink-2)"/></marker></defs>
+        <!-- External systems, left -->
+        <rect class="box ext" x="20" y="30" width="190" height="64" rx="2"/>
+        <text x="32" y="55">Google Workspace</text><text class="small" x="32" y="74">All internal calendars</text>
+        <text class="small" x="32" y="87">service account · calendar.readonly</text>
+        <rect class="box ext" x="20" y="200" width="190" height="64" rx="2"/>
+        <text x="32" y="225">Google Meet</text><text class="small" x="32" y="244">Bot joins as visible guest</text>
+        <text class="small" x="32" y="257">host admits from waiting room</text>
+        <rect class="box ext" x="20" y="320" width="190" height="64" rx="2"/>
+        <text x="32" y="345">Recall.ai</text><text class="small" x="32" y="364">bot · participant events</text>
+        <text class="small" x="32" y="377">speaker timeline · transcript · 7-day TTL</text>
+        <!-- Core -->
+        <rect class="box" x="290" y="20" width="400" height="430" rx="2"/>
+        <text class="lbl" x="302" y="40">MEET RECEIPT · Next.js on Vercel · Postgres</text>
+        <rect class="box" x="310" y="56" width="170" height="54" rx="2"/>
+        <text x="320" y="78">Calendar poller</text><text class="small" x="320" y="95">cron · dedupe by iCalUID</text>
+        <rect class="box hot" x="500" y="56" width="170" height="54" rx="2"/>
+        <text x="510" y="78">Eligibility + pricing</text><text class="small" x="510" y="95">≥2 internal priced · ≥3 + Meet → bot</text>
+        <rect class="box" x="310" y="140" width="170" height="54" rx="2"/>
+        <text x="320" y="162">Bot scheduler</text><text class="small" x="320" y="179">create bot · consent · opt-out</text>
+        <rect class="box" x="500" y="140" width="170" height="54" rx="2"/>
+        <text x="510" y="162">Webhook handlers</text><text class="small" x="510" y="179">status · kicked · not admitted</text>
+        <rect class="box hot" x="310" y="224" width="360" height="110" rx="2"/>
+        <text x="320" y="246">Post-meeting processing</text>
+        <text class="small" x="320" y="266">Attendance: union of join/leave intervals → actual cost (rate snapshot)</text>
+        <text class="small" x="320" y="283">Name matching: exact → alias → fuzzy → to-do</text>
+        <text class="small" x="320" y="300">Extraction: decisions · action items · open questions · topics · summary</text>
+        <text class="small" x="320" y="317">Speaking share · delete at vendor · transcript expires in 30 days</text>
+        <rect class="box" x="310" y="360" width="170" height="54" rx="2"/>
+        <text x="320" y="382">Ledger (Postgres)</text><text class="small" x="320" y="399">meetings · attendees · series · polls</text>
+        <rect class="box" x="500" y="360" width="170" height="54" rx="2"/>
+        <text x="510" y="382">Schedulers</text><text class="small" x="510" y="399">digest · poll expiry · purge</text>
+        <!-- External, right -->
+        <rect class="box ext" x="770" y="224" width="190" height="64" rx="2"/>
+        <text x="782" y="249">Claude (Opus 5.5)</text><text class="small" x="782" y="268">structured outputs</text>
+        <text class="small" x="782" y="281">no verdict in schema</text>
+        <rect class="box ext" x="770" y="330" width="190" height="84" rx="2"/>
+        <text x="782" y="355">Slack</text><text class="small" x="782" y="374">attendee + organizer receipts</text>
+        <text class="small" x="782" y="387">anonymous poll · threshold alerts</text>
+        <text class="small" x="782" y="400">Monday digest · admit nudge</text>
+        <rect class="box ext" x="770" y="56" width="190" height="64" rx="2"/>
+        <text x="782" y="81">Founder dashboard</text><text class="small" x="782" y="100">Google sign-in, allowlist only</text>
+        <text class="small" x="782" y="113">breakdowns · series · roster · settings</text>
+        <!-- Arrows -->
+        <path class="arrow" d="M210 62 L310 80"/>
+        <path class="arrow" d="M480 83 L500 83"/>
+        <path class="arrow" d="M585 110 L395 140" />
+        <path class="arrow" d="M310 170 L210 232"/>
+        <text class="lbl" x="222" y="190">join_at</text>
+        <path class="arrow" d="M210 352 L310 268"/>
+        <text class="lbl" x="218" y="300">webhooks · artifacts</text>
+        <path class="arrow" d="M585 194 L585 224"/>
+        <path class="arrow" d="M670 270 L770 256"/>
+        <path class="arrow" d="M670 310 L770 350"/>
+        <path class="arrow" d="M490 334 L395 360"/>
+        <path class="arrow" d="M670 387 L770 387"/>
+        <path class="arrow" d="M690 88 L770 88"/>
+        <text class="lbl" x="700" y="80">reads ledger</text>
+      </svg>
+    </div>
+    <p class="scroll-hint">Diagram scrolls sideways on small screens.</p>
+    <div class="grid2">
+      <div class="stack">
+        <h3>Cost formula</h3>
+        <div class="formula">attendee_cost = minutes ÷ 60 × rate_snapshot × loaded_multiplier<br>meeting_cost  = Σ internal attendees<br>run_rate      = avg cost per instance × instances per year</div>
+        <p class="small muted">Scheduled minutes come from the calendar. Actual minutes are the union of a participant's join and leave intervals, including early joins and overrun. With no bot, actual equals scheduled and the receipt says so. Unassigned people get the median band rate, flagged as estimated. The rate is frozen on each row so history never silently changes.</p>
+      </div>
+      <div class="stack">
+        <h3>Who sees what</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Surface</th><th>Founder</th><th>Organizer</th><th>Attendee</th></tr></thead>
+          <tbody>
+            <tr><td>Meeting total, scheduled vs actual</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+            <tr><td>Per-person cost</td><td class="yes">yes</td><td class="no">no</td><td class="no">no</td></tr>
+            <tr><td>Decisions, actions, questions</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+            <tr><td>Speaking share by name</td><td class="yes">yes</td><td class="yes">yes</td><td class="no">no</td></tr>
+            <tr><td>Late / left early</td><td class="yes">names</td><td class="part">counts only</td><td class="no">no</td></tr>
+            <tr><td>Poll aggregate (≥3 votes)</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+            <tr><td>Individual votes</td><td class="no">never</td><td class="no">never</td><td class="no">never</td></tr>
+            <tr><td>Transcript (30 days)</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="grid3">
+      <div><h3>Verified about Recall.ai</h3><ul class="small"><li>Anonymous bots wait in the Meet waiting room until a host admits them. The organizer gets a Slack nudge; a timeout falls back to scheduled cost.</li><li>Participants arrive as display names; emails are behind a feature flag. Matching uses aliases that are remembered after one fix.</li><li>No built-in consent notice. The bot's name and a chat message on join do that job.</li><li>Retention defaults to forever for new accounts and must be set. We request transcript and participant events only, never video.</li></ul></div>
+      <div><h3>Operating cost per meeting hour</h3><div class="tbl"><table><tbody>
+        <tr><td>Recall bot</td><td class="num">$0.50</td></tr>
+        <tr><td>Recall transcription</td><td class="num">$0.15</td></tr>
+        <tr><td>Claude extraction (≈12k words)</td><td class="num">&lt; $0.50</td></tr>
+        <tr><td><strong>Total</strong></td><td class="num"><strong>≈ $1.15</strong></td></tr>
+      </tbody></table></div><p class="small muted">Against a meeting that costs the company $1,000 or more. Unit economics are not the risk.</p></div>
+      <div><h3>Stack</h3><ul class="small"><li>Next.js App Router on Vercel, Postgres from the marketplace</li><li>Google service account, domain-wide delegation, calendar.readonly</li><li>Recall.ai Create Bot with join time, status webhooks, us-west-2</li><li>Anthropic TypeScript SDK, structured outputs, refusal fallback</li><li>Slack app: chat:write, im:write, users:read, users:read.email, interactivity</li><li>Vercel cron: polling, digest, poll expiry, transcript purge</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="deck">
+  <div class="stack">
+    <p class="eyebrow">Pitch deck · 11 slides</p>
+    <h2>Scroll sideways, or use the buttons.</h2>
+    <div class="deck">
+      <div class="strip" id="strip" tabindex="0" aria-label="Pitch deck slides">
+        <article class="slide title"><div class="s-top"><span>Meet Receipt</span><span>1 / 11</span></div><div><h3>Every meeting gets a receipt.</h3><p class="muted" style="font-size:clamp(15px,2vw,20px)">Cost, decisions, and an honest rating for every internal meeting. One Monday message for the founder.</p></div><div class="s-top"><span>Founder-stage prototype · Google Workspace + Slack</span><span>Oct 2026</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Problem</span><span>2 / 11</span></div><div><h3>Meetings are the biggest unmanaged line in payroll.</h3><div class="s-body"><ul><li>A 50-person company spends a meaningful share of every salaried hour in meetings, and nobody owns that budget.</li><li>The founder stopped attending most of them once the team passed 15. Visibility went to zero.</li><li>Calendars show time. Nothing shows money, and nothing shows what came out of the hour.</li><li>"Was that worth it?" is answered with opinions.</li></ul></div></div><div class="s-top"><span>Target: founders of 15 to 75 person companies</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Insight</span><span>3 / 11</span></div><div><h3>Price is the only feedback loop that changes behavior.</h3><div class="s-body"><p>Meeting-cost calculators have existed for a decade and changed nothing, because the number arrives with no context and goes nowhere. The combination that works is: the <strong>dollar figure</strong>, the <strong>artifacts</strong> (what was decided and by whom), and the <strong>team's own rating</strong>, delivered to the person who can act, at the moment they can act.</p><div class="big">$ + facts + votes</div></div></div><div class="s-top"><span>Never a model verdict. Cost next to facts.</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Product</span><span>4 / 11</span></div><div><h3>Three messages, one dashboard.</h3><div class="s-body"><div class="slide-grid"><div><strong>Organizer, before</strong><p class="small">"Planning Review is now 9 people, roughly $1,400 an hour." Sent the moment attendee nine is added.</p></div><div><strong>Everyone, after</strong><p class="small">Receipt in Slack: cost, scheduled vs actual, decisions, action items with owners, open questions, three poll buttons.</p></div><div><strong>Founder, Monday 8am</strong><p class="small">Total spent, top 5 meetings, top 3 series by annual run rate, biggest overruns, lowest-rated, to-dos.</p></div><div><strong>Dashboard</strong><p class="small">Breakdowns, series trends, roster and rate bands, settings. Founders only.</p></div></div></div></div><div class="s-top"><span>Slack is the interface. The dashboard is where you click through.</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>How it works</span><span>5 / 11</span></div><div><h3>Read every calendar. Record only what qualifies.</h3><div class="s-body"><ul><li>Google Workspace delegation reads all internal calendars, read-only. No employee has to connect anything.</li><li>Every meeting with two or more internal people is priced from role rate bands.</li><li>A visibly named Recall.ai bot joins Google Meet calls with three or more internal people, nobody external, not private. Anyone can remove it.</li><li>After the call: attendance from join and leave events, extraction with Claude under a strict schema, speaking share, anonymous poll.</li><li>Video never stored. Transcripts expire in 30 days. Facts stay.</li></ul></div></div><div class="s-top"><span>Unit cost about $1.15 per recorded hour</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Why now</span><span>6 / 11</span></div><div><h3>Bots in meetings became normal. Founders became frugal.</h3><div class="s-body"><ul><li>AI notetakers normalized a bot in the call. The cultural cost of a recorder is already paid.</li><li>Meeting-bot infrastructure (Recall.ai) and structured extraction (Claude) make the whole pipeline a few weeks of work.</li><li>Post-2022 founders run leaner teams and scrutinize every recurring cost. Payroll time in meetings is the last big one without a report.</li></ul></div></div><div class="s-top"><span>Infrastructure and culture both arrived</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Market</span><span>7 / 11</span></div><div><h3>Who buys, and what they pay today.</h3><div class="s-body" id="deck-market"><ul><li>Buyer: the founder or COO of a 15 to 75 person company on Google Workspace and Slack.</li><li>They already pay for a notetaker per seat. None of Fireflies, Otter, tl;dv, Read.ai, Gemini, or Zoom AI shows a dollar cost or a founder rollup.</li><li>Demand is documented: Shopify cut meeting time 14% with a role-band calculator; Otter and UNC Charlotte put avoidable meeting cost near $25k per employee per year.</li><li>Adjacent budget: meeting intelligence, calendar optimization, people analytics.</li></ul></div></div><div class="s-top"><span>Competitive detail in the Market section below</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Business model</span><span>8 / 11</span></div><div><h3>Flat per company. Never per seat.</h3><div class="s-body"><p>Per-seat pricing punishes the behavior we want (everyone on the roster). A flat monthly fee by company size keeps the roster complete and the incentive clean.</p><div class="big">$199 to $499 / mo</div><p class="small muted">Indicative tiers by headcount band. Gross margin stays above 90% at roughly $1.15 per recorded hour.</p></div></div><div class="s-top"><span>Pays for itself if it kills one weekly meeting</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Competition</span><span>9 / 11</span></div><div><h3>Calculators have no outcomes. Notetakers have no cost.</h3><div class="s-body"><div class="slide-grid"><div><strong>Cost analytics</strong><p class="small">Flowtrace and Worklytics price meetings from calendar metadata for mid-market and enterprise. No transcripts, no attendance, not built for a founder of 40.</p></div><div><strong>AI notetakers</strong><p class="small">Fireflies, Otter, tl;dv, Read.ai, Gemini, Zoom AI. Per-seat summaries for attendees. No dollar figure, no founder view.</p></div><div><strong>Calculators and extensions</strong><p class="small">Fellow, Read.ai, Calendyze, Fire Meetings, a dozen Chrome extensions. One average salary, no rollup, no outcomes.</p></div><div><strong>Our position</strong><p class="small">Founder-facing ledger: cost + artifacts + team rating, flat price, structural privacy.</p></div></div></div></div><div class="s-top"><span>Main risk: a notetaker adds a cost column</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Risks</span><span>10 / 11</span></div><div><h3>What could kill it, and what we did about it.</h3><div class="s-body"><ul><li><strong>Surveillance perception.</strong> No verdict, no per-person cost outside founders, no 1:1 recording, structurally anonymous polls, visible bot.</li><li><strong>Waiting room.</strong> Organizer nudge to admit; fallback to scheduled cost.</li><li><strong>Low defensibility.</strong> Win on the founder relationship and the digest, then expand into the founder's operating review.</li><li><strong>Recording-bot climate.</strong> Otter, Fireflies, and Granola are being sued over non-consenting participants; Teams now blocks external bots. No external calls, visible bot, calendar-only mode first.</li><li><strong>Vitamin, not painkiller.</strong> Validate with a 90-day backfill: if the first digest doesn't shock, stop.</li></ul></div></div><div class="s-top"><span>Kill criteria defined before building</span></div></article>
+
+        <article class="slide"><div class="s-top"><span>Plan</span><span>11 / 11</span></div><div><h3>Two weeks to a real receipt.</h3><div class="s-body"><ul><li>Week 1: skeleton, roster and bands, calendar ingestion with 90-day backfill, first Monday digest (scheduled costs).</li><li>Week 2: bot lifecycle, attendance, extraction, receipts, anonymous poll, speaking share.</li><li>Weeks 3 and 4: daily test meetings on our own team, measure admit rate and name-match accuracy, decide go or no-go.</li></ul><p><strong>Success:</strong> the founder reads the digest four Mondays in a row and changes at least one standing meeting because of it.</p></div></div><div class="s-top"><span>15 vertical slices in .scratch/issues</span></div></article>
+      </div>
+      <p class="scroll-hint">Swipe the slides, or use the buttons.</p>
+      <div class="deck-nav"><button type="button" id="prev" aria-label="Previous slide">← Prev</button><button type="button" id="next" aria-label="Next slide">Next →</button></div>
+    </div>
+  </div>
+</section>
+
+<section id="market">
+  <div class="stack">
+    <p class="eyebrow">Market check</p>
+    <h2>Is anyone else doing this?</h2>
+        <p class="col">Short answer: the "dollar figure on a calendar event" layer is commoditized. The founder-facing combination of role-band cost × actual attendance, transcript-derived facts, an anonymous rating, and a weekly digest with annualized run rates could not be found in any single product. Research as of 5 October 2026; every row links to its source.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Product</th><th>What it does</th><th>$ cost</th><th>Transcript</th><th>Pricing</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://www.flowtrace.co/pricing">Flowtrace</a></td><td>Org-wide meeting analytics from calendar metadata. Cost by team and organizer, recurring-meeting audits, calendar add-in with cost at scheduling time, Slack, feedback surveys. Explicitly does not record.</td><td class="yes">yes</td><td class="no">no</td><td>£1 to £2 per user/mo</td><td>Active, closest incumbent</td></tr>
+        <tr><td><a href="https://www.worklytics.co/pricing">Worklytics</a></td><td>Workforce analytics across 25+ tools including dollar-value meeting cost from calendar data cross-referenced with HRIS.</td><td class="yes">yes</td><td class="no">no</td><td>From $2,500/mo</td><td>Active, enterprise</td></tr>
+        <tr><td><a href="https://workspace.google.com/marketplace/app/fire_meetings/1039551925632">Fire Meetings</a></td><td>Google Meet add-on: live in-meeting cost ticker from actual attendance and compensation, leadership dashboard.</td><td class="yes">yes, attendance-based</td><td class="no">no</td><td>Free install, trial</td><td>Active, small</td></tr>
+        <tr><td><a href="https://help.fellow.ai/en/articles/8194519-the-meeting-cost-calculator">Fellow</a></td><td>Cost badge in Google Calendar from one workspace-wide average salary. Fellow has transcripts and talk-time stats, but the cost feature is not connected to them.</td><td class="part">crude</td><td class="part">separate</td><td>Paid tiers</td><td>Active</td></tr>
+        <tr><td><a href="https://support.read.ai/hc/en-us/articles/33598848257299-Using-Read-s-browser-extension">Read.ai</a></td><td>AI notetaker with engagement and talk-time metrics; browser extension shows a basic cost in Google Calendar. No per-person rates, no founder rollup.</td><td class="part">basic</td><td class="yes">yes, unlinked</td><td>Free to ~$30 per user/mo</td><td>Active</td></tr>
+        <tr><td><a href="https://calendyze.com">Calendyze</a></td><td>Calendar dashboard: per-meeting cost from entered salaries, team trends, guardrails. No Slack, no transcripts.</td><td class="yes">yes</td><td class="no">no</td><td>$3 per user/mo</td><td>Active, small</td></tr>
+        <tr><td><a href="https://mc.merill.net/message/MC790789">Microsoft Viva Insights</a></td><td>Meeting cost and quality report for leaders, expressed as time in large or long recurring meetings, not dollars.</td><td class="part">time only</td><td class="no">no</td><td>Premium license</td><td>Active</td></tr>
+        <tr><td><a href="https://reclaim.ai/pricing">Reclaim.ai</a></td><td>AI calendar with "workforce analytics" on business tiers. No verifiable dollar meeting-cost feature on its own site. Acquired by Dropbox, 2024.</td><td class="no">unverified</td><td class="no">no</td><td>$10 to $18 per seat/mo</td><td>Active</td></tr>
+        <tr><td><a href="https://www.getclockwise.com/">Clockwise</a></td><td>Calendar optimizer. No cost feature.</td><td class="no">no</td><td class="no">no</td><td>n/a</td><td><span class="no">Shut down Mar 2026</span></td></tr>
+        <tr><td><a href="https://edition.cnn.com/2023/07/12/tech/shopify-meeting-cost-calculator">Shopify calculator</a></td><td>Internal Chrome extension, 2023: role and department compensation × attendees × length. 30-minute, 3-person meeting shown at $700 to $1,600. Reported 14% drop in meeting time per employee in five months.</td><td class="yes">yes, role bands</td><td class="no">no</td><td>Internal</td><td>Never productized</td></tr>
+        <tr><td><a href="https://www.spinach.ai/blog/news/meeting-rating">Hypercontext</a></td><td>Had a one-question post-meeting rating with manager-visible averages (2019). Brand absorbed into Spinach AI, which has no cost feature.</td><td class="no">no</td><td class="part">Spinach yes</td><td>Spinach $19 per user/mo</td><td>Brand gone</td></tr>
+        <tr><td><a href="https://www.flowtrace.co/collaboration-blog/best-meeting-cost-tools">Calwise, TimeTab, WorthMeeting, extensions</a></td><td>A dozen calendar add-ins and Chrome extensions with self-entered salaries and live tickers. No rollups, no outcomes.</td><td class="yes">yes</td><td class="no">no</td><td>Mostly free</td><td>Low stakes</td></tr>
+        <tr><td><a href="https://meetric.notion.site/The-end-of-the-road-c5fefe15c7af478793d4e164fa965b64">Meetric, Vowel</a></td><td>Meeting notes products that exited, citing inability to compete with Google and Microsoft.</td><td class="no">no</td><td class="yes">yes</td><td>n/a</td><td><span class="no">Dead</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="grid2">
+      <div class="stack">
+        <h3>Adjacent notetakers</h3>
+        <p class="small">Fireflies, Otter, tl;dv, Fathom, Granola, Gemini in Meet, Zoom AI Companion, and Microsoft Copilot all produce the "facts" half of a receipt: summaries, action items, and in several cases per-speaker talk time and monologue length (<a href="https://guide.fireflies.ai/articles/2608597716-understand-fireflies-analytics-and-conversation-intelligence">Fireflies</a>, <a href="https://intercom.help/tldv/en/articles/9041193-speaker-insights">tl;dv</a>). None shows a dollar cost per meeting or a founder-level rollup, per their documentation and 2026 comparison roundups (<a href="https://www.techrepublic.com/article/news-best-ai-meeting-note-takers-2026/">TechRepublic</a>). Any of them could add a cost column in a sprint. That is the defensibility problem.</p>
+        <h3>Demand evidence</h3>
+        <ul class="small">
+          <li><a href="https://finance.yahoo.com/news/shopify-cfo-explains-meeting-cost-105829140.html">Shopify, 2023:</a> targeted 322k meeting hours removed; CFO: "No one would expense a $500 dinner." 14% drop in meeting time per employee.</li>
+          <li><a href="https://www.businesswire.com/news/home/20220926005145/en/One-third-of-Meetings-Are-Unnecessary-Costing-Companies-Millions-and-No-One-Is-Happy-About-It">Otter.ai and UNC Charlotte, 2022:</a> roughly $25k per employee per year spent on unnecessary meetings; 5.7 of 13.7 weekly meeting hours avoidable.</li>
+          <li><a href="https://ia.acs.org.au/article/2024/it-s-true--meetings-are-a-waste-of-time.html">Atlassian, 2024:</a> meetings miss their goal 60% of the time; the top barrier to getting work done.</li>
+          <li><a href="https://www.microsoft.com/en-us/worklab/we-can-not-keep-up-with-work-but-ai-can-help">Microsoft Work Trend Index, 2023:</a> inefficient meetings ranked the number one productivity disruptor.</li>
+          <li><a href="https://meetingscost.com/blog/meeting-cost-by-company-size">MeetingsCost.com, April 2026:</a> models a 50-person startup at $800k to $1.5M per year in meeting cost. Vendors (<a href="https://www.flowtrace.co/collaboration-blog/best-meeting-cost-tools">Flowtrace</a>, <a href="https://www.worklytics.co/resources/calculating-true-cost-meetings-2025-automating-google-calendar-data">Worklytics</a>) are actively marketing the category in 2025 and 2026.</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <h3>Risks others have hit</h3>
+        <ul class="small">
+          <li><strong>Visible cost counters backfire.</strong> Experts told <a href="https://www.fortune.com/2023/07/13/shopify-meeting-cost-calculator-expert-warning/">Fortune</a> Shopify's tool "makes employees feel like numbers"; one company's meeting clocks were removed within a week. Our visibility rules exist because of this.</li>
+          <li><strong>Individual analytics trigger surveillance backlash.</strong> <a href="https://rcpmag.com/articles/2020/12/01/microsoft-productivity-score-privacy.aspx">Microsoft Productivity Score</a> was called a surveillance tool; Microsoft removed user names and made metrics org-level only.</li>
+          <li><strong>Recording-bot litigation is active.</strong> <a href="https://www.uctoday.com/security-compliance-risk/otter-ai-lawsuit-meeting-bot-recording-after-call/">Otter</a> (consolidated 2025), <a href="https://tldv.io/blog/ai-meeting-recorder-lawsuits/">Fireflies</a> (2025), and <a href="https://btlaw.com/en/insights/alerts/2026/what-the-granola-class-action-means-for-companies-building-and-deploying-conversation-capture-tools">Granola</a> (July 2026). Plaintiffs were non-users recorded without consent, which is exactly the external-guest exposure the no-external rule and the unrecognized-participant flag address.</li>
+          <li><strong>Platforms are starting to block bots.</strong> <a href="https://www.uctoday.com/unified-communications/microsoft-teams-to-block-external-bots-automatically-as-ai-notetaker-crackdown-hardens/">Microsoft Teams</a> now flags external bots and added a tenant policy to block them (rollout Aug to Sep 2026). Not Google Meet yet, but a precedent that makes the Recall dependency the riskiest part of the design.</li>
+          <li><strong>Commoditization by Google and Microsoft</strong> killed Meetric, Vowel, and Clockwise. The notes layer is not where the value can live.</li>
+        </ul>
+        <div class="callout small"><p><strong>Where the gap actually is.</strong> Flowtrace, Worklytics, and Viva are governance tools priced and positioned for mid-market and enterprise. The small-company options are toys with no rollups. Nobody verified combines attendance-based role-band cost, transcript facts, an anonymous rating, and a founder digest with run rates. That stitching is open. Shopify's never-productized internal tool is the strongest evidence that the role-band approach works when adoption is top-down.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="rating">
+  <div class="stack">
+    <p class="eyebrow">Rating</p>
+    <h2>How good is the idea?</h2>
+        <div class="grid2">
+      <div class="stack">
+        <div class="score" aria-label="Scorecard, each out of 10">
+          <span>Problem severity</span><div class="bar"><i style="width:70%"></i></div><span class="n">7</span>
+          <span>Demand evidence</span><div class="bar"><i style="width:80%"></i></div><span class="n">8</span>
+          <span>Novelty of the combination</span><div class="bar mid"><i style="width:60%"></i></div><span class="n">6</span>
+          <span>Defensibility</span><div class="bar low"><i style="width:30%"></i></div><span class="n">3</span>
+          <span>Willingness to pay (15 to 75 person founders)</span><div class="bar mid"><i style="width:50%"></i></div><span class="n">5</span>
+          <span>Build feasibility</span><div class="bar"><i style="width:80%"></i></div><span class="n">8</span>
+          <span>Adoption and trust (higher is safer)</span><div class="bar low"><i style="width:40%"></i></div><span class="n">4</span>
+          <span>Timing</span><div class="bar mid"><i style="width:60%"></i></div><span class="n">6</span>
+        </div>
+        <p class="small muted">Scores are my judgment given the research above, not a formula. Defensibility and trust are the two that would change the outcome.</p>
+      </div>
+      <div class="stack">
+        <div class="verdict">
+          <div class="big">5.5<span style="font-size:22px;color:var(--ink-2)">/10</span></div>
+          <div class="stack" style="gap:10px">
+            <p><strong>A strong feature and a credible wedge. A risky standalone company.</strong></p>
+            <p class="small">The problem is real and well evidenced, the build is cheap, and the specific founder-facing combination is open. Against that: every component exists somewhere, a notetaker can add a cost column in a sprint, visible cost figures have a documented morale backlash, and the recording-bot legal climate hardened in 2025 and 2026.</p>
+          </div>
+        </div>
+        <h3>What I would do</h3>
+        <ul class="small">
+          <li><strong>Ship the calendar-only half first.</strong> Slices 01 to 05 and 13 produce the 90-day backfill, the Monday digest with run rates, and the organizer threshold alert with no bot, no transcript, and no recording risk. That alone is more than Fellow, Read.ai, or Calendyze offer a founder. If the first digest does not make you cancel or shrink a meeting, stop there.</li>
+          <li><strong>Add the bot only if the digest earns it.</strong> Receipts, extraction, speaking share, and the poll are the differentiator and also the entire legal and cultural exposure. Earn the right to introduce them.</li>
+          <li><strong>Keep the rules that came out of review.</strong> No verdict, founder-only breakdowns, no 1:1s, no external calls, anonymity by schema. Shopify and Microsoft both learned the per-person version the hard way.</li>
+          <li><strong>Defensibility has to come from the founder relationship,</strong> not the feature. The natural expansion is the founder's weekly operating review: meetings are the first line item, not the last.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="plan">
+  <div class="stack">
+    <p class="eyebrow">Build plan</p>
+    <h2>Fifteen vertical slices, each demoable on its own.</h2>
+    <div class="tbl"><table>
+      <thead><tr><th class="num">#</th><th>Slice</th><th>Blocked by</th></tr></thead>
+      <tbody>
+        <tr><td class="num">01</td><td>Foundation: skeleton, founder login, fake adapters, fixture harness, SETUP.md</td><td class="muted">none</td></tr>
+        <tr><td class="num">02</td><td>Roster and rate bands</td><td>01</td></tr>
+        <tr><td class="num">03</td><td>Calendar ingestion, eligibility, scheduled cost, Meetings list</td><td>02</td></tr>
+        <tr><td class="num">04</td><td>Series aggregation and annualized run rate</td><td>03</td></tr>
+        <tr><td class="num">05</td><td>Slack app, user mapping, pre-meeting organizer alert</td><td>03</td></tr>
+        <tr><td class="num">06</td><td>Recall bot scheduling, consent, lifecycle, opt-out</td><td>05</td></tr>
+        <tr><td class="num">07</td><td>Attendance, name matching, actual cost</td><td>06</td></tr>
+        <tr><td class="num">08</td><td>Transcript fetch, vendor deletion, 30-day purge</td><td>07</td></tr>
+        <tr><td class="num">09</td><td>Extraction with structured outputs</td><td>08</td></tr>
+        <tr><td class="num">10</td><td>Speaking share</td><td>08</td></tr>
+        <tr><td class="num">11</td><td>Receipt DMs: attendee, organizer, founder</td><td>09, 10</td></tr>
+        <tr><td class="num">12</td><td>Anonymous poll</td><td>11</td></tr>
+        <tr><td class="num">13</td><td>Weekly digest</td><td>04, 12</td></tr>
+        <tr><td class="num">14</td><td>Home dashboard, to-dos, recompute</td><td>07, 04</td></tr>
+        <tr><td class="num">15</td><td>Real-world shakedown: fixture capture, daily test meetings</td><td>13, 14</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">The PRD and the issue files live in the project's <span class="num">.scratch</span> folder. Tests drive the pipeline through its HTTP routes against fakes of Google Calendar, Recall, Slack, and the LLM; that is the single seam.</p>
+  </div>
+</section>
+
+<footer>Meet Receipt · product overview · figures in the example receipt are illustrative · competitor data as of October 2026, sources linked inline</footer>
+</div>
+
+<script>
+(function(){
+  var strip=document.getElementById('strip');
+  function step(dir){var w=strip.querySelector('.slide').getBoundingClientRect().width+16;strip.scrollBy({left:dir*w});}
+  document.getElementById('prev').addEventListener('click',function(){step(-1)});
+  document.getElementById('next').addEventListener('click',function(){step(1)});
+  strip.addEventListener('keydown',function(e){if(e.key==='ArrowRight'){step(1);e.preventDefault()}if(e.key==='ArrowLeft'){step(-1);e.preventDefault()}});
+})();
+</script>
+</body>
+</html>
